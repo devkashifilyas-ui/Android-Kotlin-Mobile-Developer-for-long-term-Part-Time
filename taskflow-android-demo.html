@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TaskFlow – Kotlin Android Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #5b3af7;
+    --accent-light: #ede8ff;
+    --accent-mid: #9b7aff;
+    --bg: #f0eef9;
+    --card-bg: #ffffff;
+    --text: #111;
+    --text-muted: #888;
+    --border: #e8e6f0;
+    --high-bg: #fde8e8; --high-fg: #a83232;
+    --med-bg: #fef3dd; --med-fg: #a06010;
+    --low-bg: #e8f7e8; --low-fg: #2a6a2a;
+    --ip-bg: #ede8ff; --ip-fg: #5b3af7;
+    --done-bg: #e8f7e8; --done-fg: #2a6a2a;
+    --pend-bg: #f0f0f0; --pend-fg: #666;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 60px;
+  }
+
+  /* ─── Page Header ─────────────────────────────────── */
+  .page-header {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .page-header .label {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+  }
+  .page-header h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .page-header h1 span { color: var(--accent); }
+  .page-header p {
+    font-size: 15px;
+    color: var(--text-muted);
+    max-width: 420px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ─── Tech Chips ──────────────────────────────────── */
+  .tech-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 40px;
+    animation: fadeUp 0.5s 0.1s ease both;
+  }
+  .tc { 
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 13px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #444;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tc.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ─── Layout ──────────────────────────────────────── */
+  .layout {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 960px;
+    animation: fadeUp 0.5s 0.15s ease both;
+  }
+
+  /* ─── Phone ───────────────────────────────────────── */
+  .phone-wrap { flex-shrink: 0; }
+  .phone {
+    width: 320px;
+    background: #1a1a2e;
+    border-radius: 40px;
+    padding: 12px;
+    box-shadow: 0 30px 70px rgba(91,58,247,0.25), 0 0 0 1px rgba(255,255,255,0.06);
+    position: sticky;
+    top: 24px;
+  }
+  .notch {
+    width: 90px; height: 26px;
+    background: #1a1a2e;
+    border-radius: 0 0 14px 14px;
+    margin: 0 auto -8px;
+    position: relative;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .notch-dot { width: 8px; height: 8px; background: #111; border-radius: 50%; }
+  .notch-pill { width: 50px; height: 5px; background: #111; border-radius: 10px; }
+  .screen {
+    background: #f5f4fb;
+    border-radius: 30px;
+    overflow: hidden;
+    min-height: 620px;
+    display: flex;
+    flex-direction: column;
+  }
+  .status-bar {
+    background: #fff;
+    padding: 10px 18px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #555;
+    font-weight: 600;
+  }
+  .battery { display: flex; align-items: center; gap: 5px; font-size: 10px; }
+
+  /* ─── Top Bar ─────────────────────────────────────── */
+  .topbar { background: #fff; padding: 12px 16px 10px; border-bottom: 1px solid #eeecf5; }
+  .topbar h2 { font-size: 17px; font-weight: 600; color: #111; }
+  .topbar p { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+  /* ─── Screens ─────────────────────────────────────── */
+  .screen-view { display: none; flex-direction: column; flex: 1; }
+  .screen-view.active { display: flex; }
+  .content { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+
+  /* ─── Stats ───────────────────────────────────────── */
+  .stats-row { display: flex; gap: 7px; padding: 10px 12px 6px; }
+  .stat-card { flex: 1; background: #fff; border-radius: 12px; padding: 9px 10px; border: 1px solid #eeecf5; }
+  .stat-num { font-size: 22px; font-weight: 600; }
+  .stat-lbl { font-size: 10px; color: #aaa; margin-top: 1px; }
+  .stat-card.purple .stat-num { color: var(--accent); }
+  .stat-card.amber .stat-num { color: #c47a15; }
+  .stat-card.green .stat-num { color: #2d7a2d; }
+
+  /* ─── Section Head ────────────────────────────────── */
+  .section-head { padding: 10px 12px 4px; font-size: 11px; font-weight: 600; color: #aaa; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* ─── Task Items ──────────────────────────────────── */
+  .task-item {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 9px 12px; background: #fff;
+    margin: 0 9px 5px; border-radius: 12px;
+    border: 1px solid #eeecf5;
+    cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+  }
+  .task-item:hover { border-color: #c0b0f5; transform: translateY(-1px); }
+  .task-item:active { transform: scale(0.99); }
+  .task-check {
+    width: 19px; height: 19px; border-radius: 50%;
+    border: 1.5px solid #ccc; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .task-check.done { background: var(--accent); border-color: var(--accent); }
+  .task-check.done::after {
+    content: ''; display: block; width: 5px; height: 3px;
+    border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-size: 12px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-title.done { text-decoration: line-through; color: #bbb; }
+  .task-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+  /* ─── Badges ──────────────────────────────────────── */
+  .badge { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 5px; font-weight: 600; margin-left: 4px; }
+  .badge.high  { background: var(--high-bg); color: var(--high-fg); }
+  .badge.med   { background: var(--med-bg);  color: var(--med-fg); }
+  .badge.low   { background: var(--low-bg);  color: var(--low-fg); }
+  .badge.ip    { background: var(--ip-bg);   color: var(--ip-fg); }
+  .badge.done-b{ background: var(--done-bg); color: var(--done-fg); }
+  .badge.pending{ background: var(--pend-bg); color: var(--pend-fg); }
+
+  /* ─── FAB ─────────────────────────────────────────── */
+  .fab {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    margin: 8px 9px 4px; background: var(--accent); color: #fff;
+    border: none; border-radius: 13px; padding: 11px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    width: calc(100% - 18px); transition: opacity 0.15s, transform 0.1s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .fab:hover { opacity: 0.92; }
+  .fab:active { transform: scale(0.98); }
+
+  /* ─── Search Screen ───────────────────────────────── */
+  .search-bar {
+    margin: 8px 9px 4px; background: #fff; border: 1px solid #eeecf5;
+    border-radius: 11px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .search-bar input {
+    border: none; background: none; font-size: 12px; color: #333;
+    outline: none; flex: 1; font-family: 'DM Sans', sans-serif;
+  }
+  .search-bar input::placeholder { color: #ccc; }
+  .filter-chips { display: flex; gap: 5px; padding: 4px 9px 6px; overflow-x: auto; }
+  .filter-chips::-webkit-scrollbar { display: none; }
+  .chip {
+    padding: 4px 11px; border-radius: 18px; font-size: 10px; font-weight: 600;
+    border: 1px solid #ddd; background: #fff; color: #666;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ─── Detail Screen ───────────────────────────────── */
+  .detail-header { background: var(--accent); padding: 14px 14px 12px; }
+  .detail-header h3 { font-size: 15px; font-weight: 600; color: #fff; }
+  .detail-header p { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+  .back-btn {
+    font-size: 11px; color: rgba(255,255,255,0.75); background: none;
+    border: none; cursor: pointer; padding: 0; margin-bottom: 7px;
+    display: flex; align-items: center; gap: 3px; font-family: 'DM Sans', sans-serif;
+  }
+  .back-btn:hover { color: #fff; }
+  .detail-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .detail-row { background: #fff; border-radius: 11px; border: 1px solid #eeecf5; padding: 10px 12px; }
+  .detail-row label { font-size: 10px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 4px; }
+  .detail-row p { font-size: 12px; color: #111; }
+  .status-selector { display: flex; gap: 5px; margin-top: 5px; }
+  .status-btn {
+    flex: 1; padding: 6px 3px; border-radius: 7px; border: 1px solid #ddd;
+    font-size: 10px; font-weight: 600; cursor: pointer; background: #f7f6fc;
+    color: #666; text-align: center; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .status-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .delete-btn {
+    background: var(--high-bg); color: var(--high-fg); border: none;
+    border-radius: 10px; padding: 10px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+  }
+  .delete-btn:hover { opacity: 0.8; }
+
+  /* ─── Add Screen ──────────────────────────────────── */
+  .add-form { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .form-field { background: #fff; border-radius: 11px; border: 1px solid #eeecf5; padding: 10px 12px; }
+  .form-field label { font-size: 10px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+  .form-field input, .form-field textarea, .form-field select {
+    width: 100%; border: none; background: none; font-size: 12px; color: #111;
+    outline: none; font-family: 'DM Sans', sans-serif; resize: none;
+  }
+  .form-field textarea { height: 46px; }
+  .priority-btns { display: flex; gap: 5px; }
+  .p-btn {
+    flex: 1; padding: 6px; border-radius: 7px; border: 1px solid #ddd;
+    font-size: 10px; font-weight: 600; cursor: pointer; background: #f7f6fc;
+    color: #666; text-align: center; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .p-btn.sel-high { background: var(--high-bg); color: var(--high-fg); border-color: #f5b0b0; }
+  .p-btn.sel-med  { background: var(--med-bg);  color: var(--med-fg);  border-color: #f5d080; }
+  .p-btn.sel-low  { background: var(--low-bg);  color: var(--low-fg);  border-color: #a0d8a0; }
+  .save-btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 13px;
+    padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+    margin-top: auto; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s, transform 0.1s;
+  }
+  .save-btn:hover { opacity: 0.92; }
+  .save-btn:active { transform: scale(0.98); }
+
+  /* ─── Stack Screen ────────────────────────────────── */
+  .arch-card { margin: 8px 9px 5px; background: #fff; border-radius: 12px; border: 1px solid #eeecf5; padding: 11px 12px; }
+  .arch-title { font-size: 10px; font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .arch-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+  .arch-box { background: var(--accent-light); border-radius: 6px; padding: 4px 9px; font-size: 10px; color: var(--accent); font-weight: 600; }
+  .arch-arrow { color: #ccc; font-size: 10px; }
+  .arch-box.gray  { background: #f0f0f0; color: #555; }
+  .arch-box.green { background: var(--low-bg); color: var(--low-fg); }
+  .arch-box.amber { background: var(--med-bg); color: var(--med-fg); }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555; line-height: 1.85; }
+  .tech-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 9px; }
+  .tech-chip {
+    background: #fff; border: 1px solid #e0e0f0; border-radius: 7px;
+    padding: 3px 9px; font-size: 10px; color: #555; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 8px; }
+  .empty-icon { font-size: 28px; }
+  .empty p { font-size: 12px; color: #bbb; }
+
+  /* ─── Nav ─────────────────────────────────────────── */
+  .nav-tabs { display: flex; background: #fff; border-top: 1px solid #eeecf5; }
+  .nav-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 8px 4px 10px; gap: 3px; cursor: pointer; font-size: 9px;
+    font-weight: 600; color: #bbb; border: none; background: none;
+    font-family: 'DM Sans', sans-serif; transition: color 0.15s;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .nav-tab.active { color: var(--accent); }
+  .nav-tab svg { flex-shrink: 0; }
+
+  /* ─── Info Panel ──────────────────────────────────── */
+  .info-panel { flex: 1; max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
+
+  .info-card {
+    background: #fff; border-radius: 16px; border: 1px solid var(--border);
+    padding: 20px 22px;
+  }
+  .info-card h3 { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
+
+  .mvvm-flow { display: flex; flex-direction: column; gap: 8px; }
+  .mvvm-row { display: flex; align-items: center; gap: 8px; }
+  .mvvm-box {
+    flex: 1; background: var(--accent-light); border-radius: 8px;
+    padding: 8px 12px; text-align: center;
+  }
+  .mvvm-box .l1 { font-size: 12px; font-weight: 600; color: var(--accent); }
+  .mvvm-box .l2 { font-size: 10px; color: #9b7aff; margin-top: 1px; }
+  .mvvm-box.gray { background: #f4f4f4; }
+  .mvvm-box.gray .l1 { color: #555; }
+  .mvvm-box.gray .l2 { color: #999; }
+  .mvvm-box.green { background: var(--low-bg); }
+  .mvvm-box.green .l1 { color: var(--low-fg); }
+  .mvvm-box.green .l2 { color: #5a9a5a; }
+  .mvvm-box.amber { background: var(--med-bg); }
+  .mvvm-box.amber .l1 { color: var(--med-fg); }
+  .mvvm-box.amber .l2 { color: #c48a30; }
+  .mvvm-arrow { color: #ccc; font-size: 13px; font-weight: 300; }
+  .mvvm-connector {
+    width: 1.5px; height: 10px; background: #ddd; margin: 0 auto;
+  }
+
+  .feat-list { display: flex; flex-direction: column; gap: 8px; }
+  .feat-item { display: flex; align-items: flex-start; gap: 10px; }
+  .feat-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    flex-shrink: 0; margin-top: 5px;
+  }
+  .feat-item .ft { font-size: 13px; font-weight: 500; color: #111; }
+  .feat-item .fs { font-size: 11px; color: #aaa; margin-top: 1px; }
+
+  .stack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .stack-item { background: #f7f6fc; border-radius: 9px; padding: 9px 12px; border: 1px solid #eeecf5; }
+  .stack-item .sn { font-size: 12px; font-weight: 600; color: #222; font-family: 'JetBrains Mono', monospace; }
+  .stack-item .sr { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item { display: flex; gap: 12px; padding-bottom: 14px; position: relative; }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-item::before {
+    content: ''; position: absolute; left: 8px; top: 18px;
+    width: 1px; height: calc(100% - 4px); background: #e8e6f0;
+  }
+  .tl-item:last-child::before { display: none; }
+  .tl-dot {
+    width: 17px; height: 17px; border-radius: 50%; background: var(--accent);
+    flex-shrink: 0; margin-top: 1px; display: flex; align-items: center;
+    justify-content: center;
+  }
+  .tl-dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+  .tl-body .td { font-size: 12px; font-weight: 600; color: #111; }
+  .tl-body .ts { font-size: 11px; color: #aaa; margin-top: 2px; line-height: 1.5; }
+
+  /* ─── Footer ──────────────────────────────────────── */
+  .footer {
+    text-align: center; margin-top: 50px; color: #aaa;
+    font-size: 12px; animation: fadeUp 0.5s 0.35s ease both;
+  }
+  .footer strong { color: var(--accent); font-weight: 600; }
+
+  /* ─── Animations ──────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Responsive ──────────────────────────────────── */
+  @media (max-width: 720px) {
+    .layout { flex-direction: column; align-items: center; }
+    .phone { position: static; }
+    .info-panel { max-width: 340px; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="label">Kotlin Android · Demo Project</div>
+  <h1>TaskFlow <span>Work Manager</span></h1>
+  <p>A production-style Android app demo built to showcase clean Kotlin development, MVVM architecture, and solid UI/UX craft.</p>
+</div>
+
+<div class="tech-row">
+  <div class="tc accent">Kotlin</div>
+  <div class="tc">MVVM</div>
+  <div class="tc">Room DB</div>
+  <div class="tc">Retrofit</div>
+  <div class="tc">LiveData</div>
+  <div class="tc">Coroutines</div>
+  <div class="tc">ViewModel</div>
+  <div class="tc">Flow</div>
+  <div class="tc">RecyclerView</div>
+</div>
+
+<div class="layout">
+
+  <!-- ── Phone ── -->
+  <div class="phone-wrap">
+    <div class="notch">
+      <div class="notch-dot"></div>
+      <div class="notch-pill"></div>
+    </div>
+    <div class="phone">
+      <div class="screen">
+        <div class="status-bar">
+          <span>9:41</span>
+          <div class="battery">
+            <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0" y="3" width="2" height="5" rx="1" fill="#555"/><rect x="3" y="1.5" width="2" height="7" rx="1" fill="#555"/><rect x="6" y="0" width="2" height="10" rx="1" fill="#555"/><rect x="9" y="1" width="2" height="8" rx="1" fill="#ddd"/><rect x="12" y="2" width="2" height="6" rx="1" fill="#ddd"/></svg>
+            87%
+          </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="screen-dashboard" class="screen-view active">
+          <div class="topbar"><h2>TaskFlow</h2><p>Mon, 17 Mar 2026</p></div>
+          <div class="content">
+            <div class="stats-row">
+              <div class="stat-card purple"><div class="stat-num" id="s-total">6</div><div class="stat-lbl">Total</div></div>
+              <div class="stat-card amber"><div class="stat-num" id="s-ip">2</div><div class="stat-lbl">In Progress</div></div>
+              <div class="stat-card green"><div class="stat-num" id="s-done">1</div><div class="stat-lbl">Done</div></div>
+            </div>
+            <div class="section-head">My Tasks</div>
+            <div id="task-list"></div>
+            <button class="fab" id="fab-btn">
+              <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+              Add New Task
+            </button>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div id="screen-search" class="screen-view">
+          <div class="topbar"><h2>Search</h2><p>Find tasks quickly</p></div>
+          <div class="search-bar">
+            <svg width="13" height="13" viewBox="0 0 13 13"><circle cx="5.5" cy="5.5" r="4.5" stroke="#ccc" stroke-width="1.5" fill="none"/><path d="M9 9l3 3" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input id="search-input" placeholder="Search tasks..." oninput="filterTasks()" />
+          </div>
+          <div class="filter-chips">
+            <div class="chip active" onclick="setFilter('all',this)">All</div>
+            <div class="chip" onclick="setFilter('Pending',this)">Pending</div>
+            <div class="chip" onclick="setFilter('In Progress',this)">In Progress</div>
+            <div class="chip" onclick="setFilter('Completed',this)">Completed</div>
+            <div class="chip" onclick="setFilter('High',this)">High Priority</div>
+          </div>
+          <div id="search-results" style="flex:1;padding-bottom:12px;"></div>
+        </div>
+
+        <!-- Add Task -->
+        <div id="screen-add" class="screen-view">
+          <div class="topbar"><h2>New Task</h2><p>Add to your list</p></div>
+          <div class="add-form">
+            <div class="form-field">
+              <label>Task Title</label>
+              <input id="new-title" placeholder="Enter task title..." />
+            </div>
+            <div class="form-field">
+              <label>Description</label>
+              <textarea id="new-desc" placeholder="Add details..."></textarea>
+            </div>
+            <div class="form-field">
+              <label>Priority</label>
+              <div class="priority-btns">
+                <div class="p-btn" id="pb-high" onclick="selPriority('High')">🔴 High</div>
+                <div class="p-btn sel-med" id="pb-med" onclick="selPriority('Medium')">🟡 Medium</div>
+                <div class="p-btn" id="pb-low" onclick="selPriority('Low')">🟢 Low</div>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Due Date</label>
+              <input id="new-due" type="date" />
+            </div>
+            <button class="save-btn" onclick="saveTask()">Save Task</button>
+          </div>
+        </div>
+
+        <!-- Detail -->
+        <div id="screen-detail" class="screen-view">
+          <div class="detail-header">
+            <button class="back-btn" onclick="goBack()">← Back</button>
+            <h3 id="detail-title">Task Title</h3>
+            <p id="detail-sub">High priority · Due Mar 20</p>
+          </div>
+          <div class="detail-body">
+            <div class="detail-row"><label>Description</label><p id="detail-desc">–</p></div>
+            <div class="detail-row">
+              <label>Status</label>
+              <div class="status-selector">
+                <div class="status-btn" id="sb-pending" onclick="setStatus('Pending')">Pending</div>
+                <div class="status-btn" id="sb-ip" onclick="setStatus('In Progress')">In Progress</div>
+                <div class="status-btn" id="sb-done" onclick="setStatus('Completed')">Done</div>
+              </div>
+            </div>
+            <div class="detail-row"><label>Priority</label><p id="detail-priority">–</p></div>
+            <div class="detail-row"><label>Due Date</label><p id="detail-due">–</p></div>
+            <button class="delete-btn" id="delete-btn">Delete Task</button>
+          </div>
+        </div>
+
+        <!-- Stack -->
+        <div id="screen-stack" class="screen-view">
+          <div class="topbar"><h2>Architecture</h2><p>MVVM · Clean structure</p></div>
+          <div class="content" style="padding-bottom:12px;">
+            <div class="arch-card">
+              <div class="arch-title">MVVM Pattern</div>
+              <div class="arch-row"><div class="arch-box">UI (Activity/Fragment)</div><div class="arch-arrow">→</div><div class="arch-box">ViewModel</div></div>
+              <div class="arch-row"><div class="arch-box">ViewModel</div><div class="arch-arrow">→</div><div class="arch-box">Repository</div></div>
+              <div class="arch-row"><div class="arch-box gray">Repository</div><div class="arch-arrow">→</div><div class="arch-box green">Room DB</div><span style="font-size:10px;color:#ccc;margin:0 2px;">+</span><div class="arch-box amber">Retrofit API</div></div>
+            </div>
+            <div class="arch-card">
+              <div class="arch-title">Package Structure</div>
+              <div class="mono">
+                com.demo.taskflow/<br>
+                &nbsp;&nbsp;├── ui/<br>
+                &nbsp;&nbsp;├── viewmodel/<br>
+                &nbsp;&nbsp;├── repository/<br>
+                &nbsp;&nbsp;├── model/<br>
+                &nbsp;&nbsp;├── network/<br>
+                &nbsp;&nbsp;└── database/
+              </div>
+            </div>
+            <div class="section-head">Tech Stack</div>
+            <div class="tech-chips">
+              <div class="tech-chip">Kotlin</div><div class="tech-chip">MVVM</div>
+              <div class="tech-chip">Room DB</div><div class="tech-chip">Retrofit</div>
+              <div class="tech-chip">LiveData</div><div class="tech-chip">Coroutines</div>
+              <div class="tech-chip">ViewModel</div><div class="tech-chip">Flow</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nav -->
+        <div class="nav-tabs">
+          <button class="nav-tab active" id="tab-dashboard" onclick="switchTab('dashboard')">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1" y="1" width="6" height="6" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="1" width="6" height="6" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="10" width="6" height="6" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="10" width="6" height="6" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            Tasks
+          </button>
+          <button class="nav-tab" id="tab-search" onclick="switchTab('search')">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 12l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Search
+          </button>
+          <button class="nav-tab" id="tab-add" onclick="switchTab('add')">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 5v7M5 8.5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Add
+          </button>
+          <button class="nav-tab" id="tab-stack" onclick="switchTab('stack')">
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M2 13h13M3.5 9l3.5-4 3 3 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Stack
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Info Panel ── -->
+  <div class="info-panel">
+
+    <div class="info-card">
+      <h3>MVVM Architecture</h3>
+      <div class="mvvm-flow">
+        <div class="mvvm-row">
+          <div class="mvvm-box" style="flex:1;">
+            <div class="l1">UI Layer</div>
+            <div class="l2">Activity · Fragment · XML</div>
+          </div>
+        </div>
+        <div class="mvvm-connector"></div>
+        <div class="mvvm-row">
+          <div class="mvvm-box" style="flex:1;">
+            <div class="l1">ViewModel</div>
+            <div class="l2">LiveData · StateFlow</div>
+          </div>
+        </div>
+        <div class="mvvm-connector"></div>
+        <div class="mvvm-row">
+          <div class="mvvm-box gray" style="flex:1;">
+            <div class="l1">Repository</div>
+            <div class="l2">Single source of truth</div>
+          </div>
+        </div>
+        <div class="mvvm-connector"></div>
+        <div class="mvvm-row" style="gap:8px;">
+          <div class="mvvm-box green" style="flex:1;">
+            <div class="l1">Room DB</div>
+            <div class="l2">Local storage</div>
+          </div>
+          <div class="mvvm-arrow">·</div>
+          <div class="mvvm-box amber" style="flex:1;">
+            <div class="l1">Retrofit</div>
+            <div class="l2">REST API</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Core Features</h3>
+      <div class="feat-list">
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">Authentication Screen</div><div class="fs">Email/password UI · Input validation · Mock auth flow</div></div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">Task Dashboard</div><div class="fs">RecyclerView list · Status indicators · Live stats</div></div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">Add / Edit / Delete</div><div class="fs">Full CRUD · Priority selector · Due date picker</div></div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">Search &amp; Filter</div><div class="fs">Real-time search · Filter by status and priority</div></div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">API Integration</div><div class="fs">Retrofit · Loading/error states · Sealed Result class</div></div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>
+          <div><div class="ft">Local Storage</div><div class="fs">Room Database · DAO pattern · Migration support</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Tech Stack</h3>
+      <div class="stack-grid">
+        <div class="stack-item"><div class="sn">Kotlin</div><div class="sr">Primary language</div></div>
+        <div class="stack-item"><div class="sn">MVVM</div><div class="sr">Architecture</div></div>
+        <div class="stack-item"><div class="sn">Room</div><div class="sr">Local database</div></div>
+        <div class="stack-item"><div class="sn">Retrofit</div><div class="sr">REST client</div></div>
+        <div class="stack-item"><div class="sn">LiveData</div><div class="sr">Reactive data</div></div>
+        <div class="stack-item"><div class="sn">Coroutines</div><div class="sr">Async ops</div></div>
+        <div class="stack-item"><div class="sn">ViewModel</div><div class="sr">UI state holder</div></div>
+        <div class="stack-item"><div class="sn">Flow</div><div class="sr">Data streams</div></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Build Timeline</h3>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-body"><div class="td">Day 1–2 · UI &amp; Navigation</div><div class="ts">All screens, navigation graph, base layouts and component styling</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-body"><div class="td">Day 3–4 · CRUD &amp; Room DB</div><div class="ts">Task model, DAO, Repository layer, ViewModel + LiveData wiring</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-body"><div class="td">Day 5 · API &amp; Polish</div><div class="ts">Retrofit integration, error/loading states, final QA and cleanup</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  Built with <strong>Kotlin</strong> · MVVM · Clean Architecture &nbsp;·&nbsp; Demo for Upwork proposal
+</div>
+
+<script>
+let tasks = [
+  {id:1,title:'Integrate Payment API',desc:'Connect Stripe payment gateway to checkout flow',priority:'High',status:'In Progress',due:'2026-03-20'},
+  {id:2,title:'Fix RecyclerView scroll bug',desc:'List jumps to top on notifyDataSetChanged',priority:'High',status:'Pending',due:'2026-03-18'},
+  {id:3,title:'Design onboarding screens',desc:'3-step onboarding with Lottie animations',priority:'Medium',status:'In Progress',due:'2026-03-22'},
+  {id:4,title:'Write unit tests for ViewModel',desc:'Cover addTask, deleteTask, updateStatus methods',priority:'Medium',status:'Pending',due:'2026-03-25'},
+  {id:5,title:'Refactor Room migrations',desc:'Add migration from v2 to v3 for new columns',priority:'Low',status:'Completed',due:'2026-03-15'},
+  {id:6,title:'Update app icon & splash',desc:'New brand assets from design team',priority:'Low',status:'Pending',due:'2026-03-28'},
+];
+let nextId = 7;
+let activeFilter = 'all';
+let selectedPriority = 'Medium';
+let currentDetailId = null;
+let prevTab = 'dashboard';
+
+function updateStats() {
+  document.getElementById('s-total').textContent = tasks.length;
+  document.getElementById('s-ip').textContent = tasks.filter(t=>t.status==='In Progress').length;
+  document.getElementById('s-done').textContent = tasks.filter(t=>t.status==='Completed').length;
+}
+
+function bc(v,type) {
+  if(type==='priority') return v==='High'?'high':v==='Medium'?'med':'low';
+  if(type==='status')   return v==='In Progress'?'ip':v==='Completed'?'done-b':'pending';
+  return '';
+}
+
+function renderTaskList(list, id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>No tasks found</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(t=>`
+    <div class="task-item" onclick="openDetail(${t.id})">
+      <div class="task-check ${t.status==='Completed'?'done':''}" onclick="toggleDone(event,${t.id})"></div>
+      <div class="task-body">
+        <div class="task-title ${t.status==='Completed'?'done':''}">${t.title}<span class="badge ${bc(t.priority,'priority')}">${t.priority}</span></div>
+        <div class="task-sub">${t.due}&nbsp;<span class="badge ${bc(t.status,'status')}">${t.status}</span></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderDashboard() { renderTaskList(tasks,'task-list'); updateStats(); }
+
+function toggleDone(e,id){
+  e.stopPropagation();
+  const t=tasks.find(x=>x.id===id);
+  if(t){t.status=t.status==='Completed'?'Pending':'Completed';renderDashboard();filterTasks();}
+}
+
+function openDetail(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  currentDetailId=id;
+  prevTab=document.querySelector('.nav-tab.active').id.replace('tab-','');
+  document.getElementById('detail-title').textContent=t.title;
+  document.getElementById('detail-sub').textContent=t.priority+' priority · Due '+t.due;
+  document.getElementById('detail-desc').textContent=t.desc||'No description.';
+  document.getElementById('detail-priority').textContent=t.priority;
+  document.getElementById('detail-due').textContent=t.due;
+  ['pending','ip','done'].forEach(s=>{
+    const m={'pending':'Pending','ip':'In Progress','done':'Completed'};
+    document.getElementById('sb-'+s).classList.toggle('selected',t.status===m[s]);
+  });
+  document.getElementById('delete-btn').onclick=()=>deleteTask(id);
+  switchScreen('detail');
+}
+
+function setStatus(s){
+  if(currentDetailId===null) return;
+  const t=tasks.find(x=>x.id===currentDetailId);
+  if(t){t.status=s;renderDashboard();filterTasks();}
+  ['pending','ip','done'].forEach(k=>{
+    const m={'pending':'Pending','ip':'In Progress','done':'Completed'};
+    document.getElementById('sb-'+k).classList.toggle('selected',s===m[k]);
+  });
+}
+
+function deleteTask(id){
+  tasks=tasks.filter(x=>x.id!==id);
+  renderDashboard();filterTasks();
+  switchTab(prevTab);
+}
+
+function goBack(){ switchTab(prevTab); }
+
+function switchScreen(name){
+  document.querySelectorAll('.screen-view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+
+function switchTab(name){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  switchScreen(name);
+  if(name==='dashboard') renderDashboard();
+  if(name==='search') filterTasks();
+}
+
+function filterTasks(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  let f=tasks;
+  if(activeFilter!=='all') f=f.filter(t=>t.status===activeFilter||t.priority===activeFilter);
+  if(q) f=f.filter(t=>t.title.toLowerCase().includes(q)||t.desc.toLowerCase().includes(q));
+  renderTaskList(f,'search-results');
+}
+
+function setFilter(val,el){
+  activeFilter=val;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  filterTasks();
+}
+
+function selPriority(p){
+  selectedPriority=p;
+  document.getElementById('pb-high').className='p-btn'+(p==='High'?' sel-high':'');
+  document.getElementById('pb-med').className='p-btn'+(p==='Medium'?' sel-med':'');
+  document.getElementById('pb-low').className='p-btn'+(p==='Low'?' sel-low':'');
+}
+
+function saveTask(){
+  const title=document.getElementById('new-title').value.trim();
+  if(!title){document.getElementById('new-title').style.outline='1px solid #f55';return;}
+  document.getElementById('new-title').style.outline='';
+  tasks.push({
+    id:nextId++,title,
+    desc:document.getElementById('new-desc').value.trim(),
+    priority:selectedPriority,status:'Pending',
+    due:document.getElementById('new-due').value||'No due date'
+  });
+  document.getElementById('new-title').value='';
+  document.getElementById('new-desc').value='';
+  document.getElementById('new-due').value='';
+  selPriority('Medium');
+  renderDashboard();
+  switchTab('dashboard');
+}
+
+document.getElementById('fab-btn').onclick=()=>switchTab('add');
+renderDashboard();
+filterTasks();
+</script>
+</body>
+</html>
